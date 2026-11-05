@@ -443,7 +443,7 @@ public class Stboy extends Spider {
     }
     private String[][] extractLinks(String raw) {
         Document doc = Jsoup.parse(raw == null? "": raw, HOST);
-        Element post = doc.select("#postlist .plhin:first .pcb, #postlist .pcb:first, .pcb:first, table[id^=pid]:first td.t_f").first();
+        Element post = doc.select("#postlist .plhin .pcb, #postlist .pcb, .pcb, table[id^=pid] td.t_f").first();
         String scope = post == null? doc.body().html(): post.html();
         String norm = scope.replaceAll("(?is)<a\\s+[^>]*href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>", " $1 $2 ");
         String text = org.jsoup.parser.Parser.unescapeEntities(norm.replaceAll("<[^>]+>", " "), false).replace('　', ' ').replaceAll("\\s+", " ");
@@ -496,9 +496,9 @@ public class Stboy extends Spider {
         List<String> edLinks = List.of(links[1]);
         String unzip = links[2][0];
         StringBuilder content = new StringBuilder(title);
-        if (!panLinks.isEmpty()) content.append("\n\n:\n").append(String.join("\n", panLinks));
-        if (!edLinks.isEmpty()) content.append("\n\n:\n").append(String.join("\n", edLinks));
-        if (!unzip.isEmpty()) content.append("\n\n: ").append(unzip);
+        if (!panLinks.isEmpty()) content.append("\n\n【点击展开网盘链接（长按以复制）】:\n").append(String.join("\n", panLinks));
+        if (!edLinks.isEmpty()) content.append("\n\n【磁力/ED2K】:\n").append(String.join("\n", edLinks));
+        if (!unzip.isEmpty()) content.append("\n\n【解压密码】: ").append(unzip);
         List<String> plays = new ArrayList<>();
         for (int i = 0; i < edLinks.size(); i++) plays.add(edLinks.size() > 1? "Play " + (i + 1) + "$" + edLinks.get(i): "Play$" + edLinks.get(i));
         return Vod.create().id(fid).name(title).pic("").remarks("")
