@@ -72,7 +72,6 @@ public class Stboy extends Spider {
     private static final String SITE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final String BD_UA_WEB = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     private static final String BD_UA_NET = "netdisk;12.24.6;piano;android-android;16;JSbridge4.4.0;jointBridge;1.1.0";
-    private static final String BD_TMP_DIR = "/搜同临时转存";
     private static final String DEFAULT_CK = "HstCfa3668293=1786123040751;HstCmu3668293=1786123040751;HstCnv3668293=1;HstCns3668293=1;HwLz_2132_saltkey=Q7aAffco;HwLz_2132_lastvisit=1786119503;HwLz_2132_sendmail=1;HwLz_2132_seccodecStxsYj4=6411.be348b2c87bf8c6bec;HwLz_2132_ulastactivity=3ff9PJ%2BQng48NadIHcp%2BDTbQN4pizBa2yvg63kY3tIenOsydFaih;HwLz_2132_auth=6d06zsMtHlhh2qCTC7hr78CRWnr91SJ%2BDQAmWQozQ2DcX9yfQztNjc1qfJgzTfm3NNSwTQsrOSdQOdipKnEgaEgG0LPY;HwLz_2132_lastcheckfeed=2762406%7C1786123105;HwLz_2132_onlineusernum=25843;HstCla3668293=1786123107126;HstPn3668293=7;HstPt3668293=7;HwLz_2132_checkpm=1;HwLz_2132_sid=xMuYG4;HwLz_2132_lip=2a09%3Abac1%3A19e0%3A48%3A%3A26a%3Acd%2C1786123107;HwLz_2132_lastact=1786123107%09misc.php%09patch";
 
     private static final String[][] CLASSES = {{"百度☁️", "467::916"}, {"配置⚙️", "config"}, {"磁力🧲", "magnet_folder"}, {"BL📀", "474"}, {"小说📖", "all"}, {"漫画🎨", "157"}, {"图库🩸", "134"}};
@@ -224,7 +223,7 @@ public class Stboy extends Spider {
             return Response.notify("已清除百度 Cookie");
         }
         if (action.equals("site_cookie")) return siteCookieDialog();
-        if (action.equals("baidu_help")) return Response.notify("百度分类点帖子封面 → 分享文件列表 → 点文件即转存取直链，弹下载窗下载到 Download 目录（可暂停/取消）");
+        if (action.equals("baidu_help")) return Response.notify("百度分类点帖子封面 → 分享文件列表 → 点文件即取直链，弹下载窗下载到 Download 目录（可暂停/取消）");
         if (action.startsWith("bdl/")) return baiduDownload(action.substring(4));
         return Response.notify("不支持此操作");
     }
@@ -726,7 +725,7 @@ public class Stboy extends Spider {
     private String bdBdstoken(String cookie) throws Exception {
         JSONObject j = bdTplvar("bdstoken", cookie);
         if (j.has("errno") && j.getInt("errno") != 0) {
-            if (j.getInt("errno") == -6) throw new Exception("获取 bdstoken 失败 errno=-6：这个 Cookie 不是网页版登录态（多为从 App 抓的），只能列分享、不能转存下载；请在电脑/手机浏览器登录 pan.baidu.com 后复制 Cookie");
+            if (j.getInt("errno") == -6) throw new Exception("获取 bdstoken 失败 errno=-6：这个 Cookie 不是网页版登录态（多为从 App 抓的），网页登录态验证不通过；请在电脑/手机浏览器登录 pan.baidu.com 后复制 Cookie");
             throw new Exception("获取 bdstoken 失败 errno=" + j.getInt("errno"));
         }
         return j.getJSONObject("result").getString("bdstoken");
@@ -817,68 +816,10 @@ public class Stboy extends Spider {
         return dlink;
     }
 
-    private String bdTdir(String cookie, String token) throws Exception {
-        try {
-            JSONObject j = bdGetJ("https://pan.baidu.com/api/list?channel=chunlei&clienttype=0&app_id=250528&web=1&page=1&num=100&dir=%2F", cookie, BD_UA_WEB, new JSONObject().put("Referer", "https://pan.baidu.com/disk/main"));
-            if (!j.has("errno") || j.getInt("errno") == 0) {
-                JSONArray list = j.getJSONArray("list");
-                for (int i = 0; i < list.length(); i++) if (list.getJSONObject(i).getString("path").equals(BD_TMP_DIR)) return BD_TMP_DIR;
-            }
-        } catch (Exception ignored) {
-        }
-        JSONObject data = new JSONObject().put("path", BD_TMP_DIR).put("isdir", "1").put("size", "").put("block_list", "[]").put("method", "post").put("dataType", "json");
-        JSONObject j = bdPostJ("https://pan.baidu.com/api/create?a=commit&channel=chunlei&web=1&app_id=250528&clienttype=0&bdstoken=" + token, data, null, cookie, BD_UA_NET, new JSONObject().put("Referer", "https://yun.baidu.com/disk/main"));
-        return !j.has("errno") || j.getInt("errno") == 0 ? BD_TMP_DIR : "/";
-    }
-
-    private String bdTransfer(JSONObject info, String cookie) throws Exception {
-        String token = bdBdstoken(cookie);
-        String toDir = bdTdir(cookie, token);
-        String url = "https://pan.baidu.com/share/transfer?shareid=" + info.getString("share_id") + "&from=" + info.getString("uk") + "&channel=chunlei&sekey=" + info.getString("sekey") + "&ondup=newcopy&web=1&app_id=250528&bdstoken=" + token + "&clienttype=0";
-        JSONObject data = new JSONObject().put("fsidlist", "[\"" + info.getString("fs_id") + "\"]").put("path", toDir);
-        JSONObject extra = new JSONObject().put("Origin", "https://pan.baidu.com").put("Referer", "https://pan.baidu.com/s/");
-        JSONObject j = bdPostJ(url, data, null, bdCk(cookie, info.getString("sekey")), BD_UA_WEB, extra);
-        if (j.has("errno") && j.getInt("errno") != 0) throw new Exception("转存失败 errno=" + j.getInt("errno"));
-        return j.getJSONObject("extra").getJSONArray("list").getJSONObject(0).getString("to");
-    }
-
-    private String bdLocate(String path, String cookie) throws Exception {
-        String url = "https://d.pcs.baidu.com/rest/2.0/pcs/file?method=locatedownload&app_id=250528&clienttype=17&ver=4.0&ant=1&check_blue=1&es=1&esl=1&apn_id=1_-1&freeisp=0&queryfree=0&use=1&dtype=1&eck=1&ehps=1&err_ver=1.0&network_type=WIFI&channel=0"
-        + "&path=" + java.net.URLEncoder.encode(path, StandardCharsets.UTF_8) + "&time=" + (System.currentTimeMillis() / 1000) + "&rand=5ed606e9da222cde0474cdf70eda884b&devuid=0F1E9FC2E084472DA5A61C4CF4C759AF&cuid=0F1E9FC2E084472DA5A61C4CF4C759AF&deviceid=348642637967375013&psign=860a071f77c860e8cea06e4e54c518f3&version=2.2.111.34&version_app=12.24.6&vip=0";
-        JSONObject extra = new JSONObject().put("Content-Type", "application/x-www-form-urlencoded");
-        JSONObject j = bdPostJ(url, null, "0", cookie, BD_UA_NET, extra);
-        if (j.has("error_code") && j.getInt("error_code") != 0) throw new Exception("获取下载链接失败 error_code=" + j.getInt("error_code"));
-        if (j.has("errno") && j.getInt("errno") != 0) throw new Exception("获取下载链接失败 errno=" + j.getInt("errno"));
-        if (!j.has("urls")) throw new Exception("获取下载链接失败：接口未返回 urls");
-        JSONArray urls = j.getJSONArray("urls");
-        String fallback = "";
-        for (int pass = 0; pass < 2; pass++) {
-            for (int i = 0; i < urls.length(); i++) {
-                JSONObject x = urls.getJSONObject(i);
-                String u = x.optString("url");
-                if (u.isEmpty()) continue;
-                if (fallback.isEmpty()) fallback = u;
-                boolean plain = x.has("encrypt") && x.getInt("encrypt") == 0;
-                if (pass == 0 && plain && u.startsWith("https")) return u;
-                if (pass == 1 && u.startsWith("https")) return u;
-            }
-        }
-        return fallback;
-    }
-
-    private void bdDelete(String path, String cookie) {
-        try {
-            String token = bdBdstoken(cookie);
-            String body = "filelist=" + java.net.URLEncoder.encode("[\"" + path + "\"]", StandardCharsets.UTF_8);
-            JSONObject extra = new JSONObject().put("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-            bdPostJ("https://pan.baidu.com/api/filemanager?async=2&onnest=fail&opera=delete&bdstoken=" + token + "&newVerify=1&clienttype=0&app_id=250528&web=1", null, body, cookie, BD_UA_NET, extra);
-        } catch (Exception ignored) {
-        }
-    }
     private String askCookie() throws Exception {
         JSONObject opts = new JSONObject()
         .put("title", "摆渡网盘")
-        .put("message", "粘贴完整 Cookie，需包含 BDUSS；保存后用于转存取链与下载。")
+        .put("message", "粘贴完整 Cookie，需包含 BDUSS；保存后用于获取直链与下载。")
         .put("cancelable", true)
         .put("inputs", new JSONArray().put(new JSONObject().put("name", "cookie").put("label", "Cookie").put("type", "textarea").put("required", true).put("helperText", "适合已有 BDUSS")))
         .put("buttons", new JSONArray().put(new JSONObject().put("id", "save").put("label", "保存")));
@@ -917,11 +858,11 @@ public class Stboy extends Spider {
             if (!v.contains("BDUSS=")) return Response.notify("未保存 Cookie");
             if (v.equals(before)) return Response.notify("已保存百度 Cookie");
             String name = bdUsername(v);
-            if (name.isEmpty()) return Response.notify("Cookie 已保存，但百度网页接口验证失败：这个多半是 App 抓的 Cookie，能列分享、不能转存下载；请改用浏览器登录 pan.baidu.com 后复制的 Cookie");
+            if (name.isEmpty()) return Response.notify("Cookie 已保存，但百度网页接口验证失败：这个多半是 App 抓的 Cookie，网页登录态验证不通过；请改用浏览器登录 pan.baidu.com 后复制的 Cookie");
             try {
                 bdBdstoken(v);
             } catch (Exception e) {
-                return Response.notify("Cookie 已保存，但取 bdstoken 失败：这个多半是 App 抓的 Cookie，能列分享、不能转存下载；请改用浏览器登录 pan.baidu.com 后复制的 Cookie");
+                return Response.notify("Cookie 已保存，但取 bdstoken 失败：这个多半是 App 抓的 Cookie，网页登录态验证不通过；请改用浏览器登录 pan.baidu.com 后复制的 Cookie");
             }
             localSet("baidu_user", name);
             return Response.notify("百度已登录：" + name);
@@ -1052,23 +993,8 @@ public class Stboy extends Spider {
             if (!cookie.contains("BDUSS=")) cookie = askCookie();
             if (!cookie.contains("BDUSS=")) return Response.notify("未设置百度 Cookie（BDUSS），无法下载");
             String name = info.optString("name");
-            String url;
-            String ua;
-            Runnable cleanup = null;
-            try {
-                url = bdShareDownload(info, cookie);
-                ua = "pan.baidu.com";
-            } catch (Exception directErr) {
-                String toPath = bdTransfer(info, cookie);
-                url = bdLocate(toPath, cookie);
-                ua = BD_UA_NET;
-                String ck = cookie;
-                cleanup = () -> Task.submit(() -> bdDelete(toPath, ck));
-            }
-            Runnable done = cleanup;
-            String dlUrl = url;
-            String dlUa = ua;
-            main.post(() -> showDownload(dlUrl, name, dlUa, done));
+            String url = bdShareDownload(info, cookie);
+            main.post(() -> showDownload(url, name, "pan.baidu.com", null));
             return "{}";
         } catch (Exception e) {
             return Response.notify("百度下载失败：" + e.getMessage());
