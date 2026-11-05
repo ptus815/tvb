@@ -26,14 +26,16 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android platform 37
-        shell: cmd
+        shell: pwsh
         run: |
-          echo y | "%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager.bat" --licenses
-          "%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager.bat" "platforms;android-37"
+          $sdk = "$env:ANDROID_HOME\cmdline-tools\latest\bin\sdkmanager.bat"
+          Write-Host "ANDROID_HOME=$env:ANDROID_HOME"
+          ("y`r`n" * 30) | & $sdk --licenses
+          & $sdk "platforms;android-37"
+          if ($LASTEXITCODE -ne 0) { throw "platform install failed: $LASTEXITCODE" }
+          & $sdk "build-tools;37.0.0"
+          Write-Host "build-tools install exit: $LASTEXITCODE (tolerated - AGP auto-downloads if missing)"
 
       - name: Build and verify custom_spider.jar
         shell: cmd
