@@ -1,0 +1,58 @@
+name: Build custom_spider.jar
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/build-spider-jar.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-spider-jar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform 37
+        shell: cmd
+        run: |
+          echo y | "%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager.bat" --licenses
+          "%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager.bat" "platforms;android-37"
+
+      - name: Build and verify custom_spider.jar
+        shell: cmd
+        run: gradlew.bat spiderJar
+
+      - name: Upload custom_spider.jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom_spider
+          path: |
+            jar/custom_spider.jar
+            jar/custom_spider.jar.md5
+          if-no-files-found: error
+
+      - name: Commit built jar back to repo
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add jar/custom_spider.jar jar/custom_spider.jar.md5
+          git diff --cached --quiet && echo "jar unchanged" || git commit -m "build: custom_spider.jar [skip ci]"
+          git push
