@@ -946,6 +946,7 @@ public class Stboy extends Spider {
         JSONObject q = new JSONObject(net.json("https://passport.baidu.com/v2/api/getqrcode?lp=pc&qrloginfrom=pc&apiver=v3", ua.toString()));
         String sign = q.optString("sign");
         String imgurl = q.optString("imgurl");
+        if (!imgurl.startsWith("http")) imgurl = "https://" + imgurl;
         if (sign.isEmpty() || imgurl.isEmpty()) return Response.notify("扫码初始化失败，请改用手动输入 Cookie");
         JSONObject ropts = new JSONObject().put("buffer", 1).put("headers", new JSONObject().put("User-Agent", BD_UA_WEB));
         JSONObject r = new JSONObject(net.req(imgurl, ropts.toString()));
@@ -964,7 +965,13 @@ public class Stboy extends Spider {
         .put(new JSONObject().put("id", "close").put("label", "关闭")));
         dialog(dopts, event -> {
             if (!event.getString("button").equals("done")) return null;
-            JSONObject u = new JSONObject(net.json("https://passport.baidu.com/channel/unicast?channel_id=" + sign + "&tpl=mn&_sdkFrom=1", ua.toString()));
+            JSONObject u;
+            try {
+                JSONObject pollOpts = new JSONObject().put("timeout", 25000).put("headers", new JSONObject().put("User-Agent", BD_UA_WEB));
+                u = new JSONObject(net.json("https://passport.baidu.com/channel/unicast?channel_id=" + sign + "&tpl=mn&_sdkFrom=1", pollOpts.toString()));
+            } catch (Exception e) {
+                return new JSONObject().put("message", "等待扫码…（确认后再次点「我已扫码」）");
+            }
             String cv = u.optString("channel_v");
             if (cv.isEmpty()) return new JSONObject().put("message", "等待扫码…");
             JSONObject c = new JSONObject(cv);
